@@ -19,6 +19,7 @@ def scrape_all():
         "news_paragraph": news_paragraph,
         "featured_image": featured_image(browser),
         "facts": mars_facts(),
+        "hemisphere":hemisphere(browser),
         "last_modified": dt.datetime.now()
     }
 
@@ -91,13 +92,80 @@ def mars_facts():
         return None
 
     # Assign columns and set index of dataframe
-    df.columns=['Description', 'Mars', 'Earth']
+    df.columns=['Description', 'Mars']
     df.set_index('Description', inplace=True)
 
     # Convert dataframe into HTML format, add bootstrap
     return df.to_html(classes="table table-striped")
 
-if __name__ == "__main__":
+def hemisphere(browser):
 
+    # Visit the weather website
+    url = 'https://mars.nasa.gov/insight/weather/'
+    browser.visit(url)
+
+    # Parse the data
+    html = browser.html
+    weather_soup = soup(html, 'html.parser')
+
+    # Scrape the Daily Weather Report table
+    weather_table = weather_soup.find('table', class_='mb_table')
+    print(weather_table.prettify())
+
+    # # D1: Scrape High-Resolution Mars’ Hemisphere Images and Titles
+
+    # ### Hemispheres
+
+    # 1. Use browser to visit the URL
+    url = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
+    browser.visit(url)
+
+    # 2. Create a list to hold the images and titles.
+    hemisphere_image_urls = []
+
+    # 3. Write code to retrieve the image urls and titles for each hemisphere.
+    html = browser.html
+    hemi_soup = soup(html, 'html.parser')
+
+    hemi_title = hemi_soup.find_all("h3")
+    hemi_titles = []
+    rel_urls = []
+    for title in hemi_title:
+        hemi_title = title.text
+        hemi_titles.append(hemi_title)
+        for title in hemi_titles:
+            browser.visit(url)
+            html = browser.html
+            hemi_soup = soup(html, 'html.parser')
+
+            link_element = browser.links.find_by_partial_text(title)
+            link_element.click()
+
+            hypertext = browser.html
+            img_soup = soup(hypertext, 'html.parser')
+
+            rel_url = img_soup.select_one("img.wide-image").get('src')
+            if rel_url not in rel_urls:
+                rel_urls.append(rel_url)
+
+    for url in rel_urls:
+        full_img_url = f'https://astrogeology.usgs.gov{url}'
+        hemisphere_image_urls.append(full_img_url)
+
+    hemi_zip = zip(hemisphere_image_urls, hemi_titles)
+    hemi_list = []
+    for img_url, title in hemi_zip:
+        hemispheres = {}
+
+        hemispheres['img_url'] = img_url
+
+        hemispheres['title'] = title
+
+        hemi_list.append(hemispheres)
+
+    # 4. Print the list that holds the dictionary of each image url and title.
+    return hemi_list
+
+if __name__ == "__main__":
     # If running as script, print scraped data
     print(scrape_all())
